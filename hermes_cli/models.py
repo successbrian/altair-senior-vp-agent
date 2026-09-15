@@ -515,11 +515,17 @@ _PROVIDER_MODELS: dict[str, list[str]] = {
         "qwen3.5-plus",
     ],
     "kilocode": [
-        "anthropic/claude-opus-4.6",
-        "anthropic/claude-sonnet-4.6",
-        "openai/gpt-5.4",
-        "google/gemini-3-pro-preview",
-        "google/gemini-3-flash-preview",
+        "kilo-auto/free",
+        "stepfun/step-3.7-flash:free",
+        "inclusionai/ling-3.0-flash:free",
+        "poolside/laguna-s-2.1:free",
+        "poolside/laguna-xs-2.1:free",
+        "cohere/north-mini-code:free",
+        "nvidia/nemotron-3.5-content-safety:free",
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "openrouter/free",
     ],
     # Alibaba DashScope Coding platform (coding-intl) — default endpoint.
     # Supports Qwen models + third-party providers (GLM, Kimi, MiniMax).
