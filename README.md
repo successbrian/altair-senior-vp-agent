@@ -5,8 +5,8 @@ Nous Research — the open-source agent framework.
 
 This fork powers **Altair**, a Senior VP agent running a production multi-agent
 ecosystem on self-hosted hardware: 8 agents, 16 specialized workers, a PostgreSQL-backed
-knowledge architecture, and SEC EDGAR data pipelines — all on roughly $500 of sourced
-hardware.
+knowledge architecture, and SEC EDGAR data pipelines — all on a ~$1,600 machine built from a barebones mini-PC
+plus self-sourced RAM and storage.
 
 ## Customizations
 
