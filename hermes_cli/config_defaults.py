@@ -30,6 +30,12 @@ DEFAULT_CONFIG = {
     "max_live_sessions": 16,
     "agent": {
         "max_turns": 500,
+        # ALT AIR (fork) — snappy intake mode. When true, the agent persists the
+        # incoming user prompt and replies with a short ack ("Ready.") immediately,
+        # then hands the full disassembly/planning to a background subagent so the
+        # front-end stays fast and the accurate thinking happens off-channel.
+        # Default false = normal behaviour.
+        "snappy_ack": False,
         # Inactivity timeout for gateway agent execution (seconds).
         # The agent can run indefinitely as long as it's actively calling
         # tools or receiving API responses.  Only fires when the agent has

@@ -7573,6 +7573,35 @@ class AIAgent:
         moa_config: Optional[dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Forwarder — see ``agent.conversation_loop.run_conversation``."""
+        # ── snappy_ack hook (short-circuit for intake mode) ──
+        try:
+            _snappy_cfg = getattr(self, "config", None)
+            if isinstance(_snappy_cfg, dict):
+                _agent_cfg = _snappy_cfg.get("agent", {})
+                _snappy_ack = bool(_agent_cfg.get("snappy_ack", False)) if isinstance(_agent_cfg, dict) else False
+            else:
+                _snappy_ack = False
+            if not _snappy_ack:
+                from hermes_cli.config import load_config
+                _cfg = load_config() or {}
+                _agent_cfg = _cfg.get("agent", {}) if isinstance(_cfg, dict) else {}
+                _snappy_ack = bool((_agent_cfg or {}).get("snappy_ack", False))
+            if _snappy_ack and user_message and isinstance(user_message, str) and user_message.strip():
+                from datetime import datetime as _dt
+                from hermes_constants import get_hermes_home
+                _queue_dir = get_hermes_home() / "intake_queue"
+                _queue_dir.mkdir(parents=True, exist_ok=True)
+                _stamp = _dt.now().strftime("%Y%m%d_%H%M%S_%f")
+                _path = _queue_dir / f"{_stamp}.txt"
+                _path.write_text(user_message, encoding="utf-8")
+                return {
+                    "final_response": "Ready.",
+                    "completed": True,
+                    "api_calls": 0,
+                    "messages": [],
+                }
+        except Exception:
+            pass  # Fall through to normal path
         from agent.aux_accounting import (
             reset_accounting_context,
             set_accounting_context,
