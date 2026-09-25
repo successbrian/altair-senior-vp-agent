@@ -7621,7 +7621,7 @@ class AIAgent:
                         "goal": "Step 4: REPORT — After all steps finish, summarize results to Brian as a single message with findings.",
                     },
                     {
-                        "goal": "Step 5: QUESTIONS — If any step cannot proceed without Brian input, surface ONE question at a time. Route analysis questions to Gemini Pro.",
+                        "goal": "Step 5: QUESTIONS — If any step cannot proceed without Brian input, surface ONE question at a time. Route analysis questions to deepseek-v4-pro.",
                         "context": "Never guess. Fire background investigation AND ask one question.",
                     },
                 ]
