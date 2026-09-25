@@ -28,7 +28,9 @@ import { AgentsOverlay } from './agentsOverlay.js'
 import { GoodVibesHeart, StatusRule, StickyPromptTracker, TranscriptScrollbar } from './appChrome.js'
 import { FloatingOverlays, PromptZone } from './appOverlays.js'
 import { Banner, Panel, SessionPanel } from './branding.js'
+import { DbTasksPanel } from './dbTasks.js'
 import { FpsOverlay } from './fpsOverlay.js'
+import { HealthStrip } from './healthStrip.js'
 import { HelpHint } from './helpHint.js'
 import { Journey } from './journey.js'
 import { MessageLine } from './messageLine.js'
@@ -533,6 +535,8 @@ export const AppLayout = memo(function AppLayout({
   return (
     <Shell {...shellProps}>
       <Box flexDirection="column" flexGrow={1} position="relative">
+        {!overlay.agents && !overlay.journey && <HealthStrip />}
+        {!overlay.agents && !overlay.journey && <DbTasksPanel />}
         <Box flexDirection="row" flexGrow={1}>
           {!overlay.agents && !overlay.journey && <AmbientRail side="left" />}
           {overlay.agents ? (
