@@ -7605,38 +7605,18 @@ class AIAgent:
                 # The async delegation registry persists this to state.db and
                 # will re-deliver the result as a fresh turn when the subagent
                 # finishes — even if the gateway restarts mid-run.
-                _planner_goals = [
-                    {
-                        "goal": "Step 1: INGEST — parse Brian's intent from this message: " + user_message,
-                        "context": "Extract any new goal, task/action item, and note. Write them down. Use deepseek-v4-pro for this decomposition.",
-                    },
-                    {
-                        "goal": "Step 2: WRITE PLAN — Create a bullet-point step plan. Record the plan to SBOS by calling: python3 /home/agents/workspace/scripts/altair_intake.py all --title '<plan>' --note '<bullet steps>' --priority high --initiative 15 --worker altair. Then summarize the step list.",
-                    },
-                    {
-                        "goal": "Step 3: EXECUTE — Run each plan step as a parallel subagent via delegate_task. Report completion after each step finishes.",
-                        "context": "Use deepseek-v4-pro for all background work.",
-                    },
-                    {
-                        "goal": "Step 4: REPORT — After all steps finish, summarize results to Brian as a single message with findings.",
-                    },
-                    {
-                        "goal": "Step 5: QUESTIONS — If any step cannot proceed without Brian input, surface ONE question at a time. Route analysis questions to deepseek-v4-pro.",
-                        "context": "Never guess. Fire background investigation AND ask one question.",
-                    },
-                ]
-
                 _planner_context = (
                     "You are Altair's background planner subagent for Brian. "
                     "You were launched via snappy_intake planner mode: the TUI said 'Ready.' and dispatched "
-                    "you in the background. Your job is to process the full user prompt that follows, "
-                    "which was captured in 'Step 1: INGEST'. Proceed through the 5 steps listed in goals[]. "
-                    "Record a step plan to SBOS (use shell to call "
-                    "python3 /home/agents/workspace/scripts/altair_intake.py). "
-                    "Execute steps in parallel with your own delegate_task fan-out (you are role=orchestrator). "
-                    "Use deepseek-v4-pro for any analysis/deep-thinking. "
-                    "Report progress frequently — the user will see progress events as they happen. "
-                    "If you need clarification, ask ONE question at a time. "
+                    "you in the background to process the user message. Work through these 5 steps:\n"
+                    "1. INGEST — parse Brian's intent; extract any new goal, task/action item, or note.\n"
+                    "2. WRITE PLAN — a bullet-point step plan; record it to SBOS via: "
+                    "python3 /home/agents/workspace/scripts/altair_intake.py all --title '<plan>' --note '<steps>' "
+                    "--priority high --initiative 15 --worker altair\n"
+                    "3. EXECUTE — run each plan step as a parallel subagent via delegate_task (you are role=orchestrator).\n"
+                    "4. REPORT — summarize results to Brian as a single message with findings.\n"
+                    "5. QUESTIONS — if any step needs Brian input, surface ONE question at a time.\n"
+                    "Use deepseek-v4-pro for all work. Report progress frequently — the user sees progress events as they happen. "
                     "Each child subagent gets its own isolated terminal session."
                 )
 
@@ -7656,7 +7636,6 @@ class AIAgent:
                         background=True,
                         max_iterations=120,
                         parent_agent=self,
-                        tasks=_planner_goals,
                     )
                     # delegate_task returns a JSON string (status: dispatched, delegation_id)
                     if _result:
