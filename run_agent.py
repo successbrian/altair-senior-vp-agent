@@ -7574,6 +7574,15 @@ class AIAgent:
     ) -> Dict[str, Any]:
         """Forwarder — see ``agent.conversation_loop.run_conversation``."""
         # ── snappy_ack hook (short-circuit for intake mode) ──
+        # When snappy_ack is true: immediately return "Ready." to the user,
+        # then launch a background planner subagent that processes the real prompt.
+        # The background agent does full planning, step recording, parallel execution,
+        # progress reporting, and question handling.
+        #
+        # Uses delegate_task(background=True) for durability: the async delegation
+        # system persists dispatch to state.db (crash recovery), tracks staleness
+        # via progress_fn, and publishes completion to completion_queue which the
+        # TUI polls -> progress/progress-update events re-enter as fresh turns.
         try:
             _snappy_cfg = getattr(self, "config", None)
             if isinstance(_snappy_cfg, dict):
@@ -7587,18 +7596,139 @@ class AIAgent:
                 _agent_cfg = _cfg.get("agent", {}) if isinstance(_cfg, dict) else {}
                 _snappy_ack = bool((_agent_cfg or {}).get("snappy_ack", False))
             if _snappy_ack and user_message and isinstance(user_message, str) and user_message.strip():
-                from datetime import datetime as _dt
-                from hermes_constants import get_hermes_home
-                _queue_dir = get_hermes_home() / "intake_queue"
-                _queue_dir.mkdir(parents=True, exist_ok=True)
-                _stamp = _dt.now().strftime("%Y%m%d_%H%M%S_%f")
-                _path = _queue_dir / f"{_stamp}.txt"
-                _path.write_text(user_message, encoding="utf-8")
+                import uuid as _uuid
+
+                _task_id = str(_uuid.uuid4())
+
+                # Record the task ID on the agent instance so the completion
+                # drain can correlate background results with the original ack.
+                # The async delegation registry persists this to state.db and
+                # will re-deliver the result as a fresh turn when the subagent
+                # finishes — even if the gateway restarts mid-run.
+                _planner_goals = [
+                    {
+                        "goal": "Step 1: INGEST — parse Brian's intent from this message: " + user_message,
+                        "context": "Extract any new goal, task/action item, and note. Write them down. Use deepseek-v4-pro for this decomposition.",
+                    },
+                    {
+                        "goal": "Step 2: WRITE PLAN — Create a bullet-point step plan. Record the plan to SBOS by calling: python3 /home/agents/workspace/scripts/altair_intake.py all --title '<plan>' --note '<bullet steps>' --priority high --initiative 15 --worker altair. Then summarize the step list.",
+                    },
+                    {
+                        "goal": "Step 3: EXECUTE — Run each plan step as a parallel subagent via delegate_task. Report completion after each step finishes.",
+                        "context": "Use deepseek-v4-pro for all background work.",
+                    },
+                    {
+                        "goal": "Step 4: REPORT — After all steps finish, summarize results to Brian as a single message with findings.",
+                    },
+                    {
+                        "goal": "Step 5: QUESTIONS — If any step cannot proceed without Brian input, surface ONE question at a time. Route analysis questions to Gemini Pro.",
+                        "context": "Never guess. Fire background investigation AND ask one question.",
+                    },
+                ]
+
+                _planner_context = (
+                    "You are Altair's background planner subagent for Brian. "
+                    "You were launched via snappy_intake planner mode: the TUI said 'Ready.' and dispatched "
+                    "you in the background. Your job is to process the full user prompt that follows, "
+                    "which was captured in 'Step 1: INGEST'. Proceed through the 5 steps listed in goals[]. "
+                    "Record a step plan to SBOS (use shell to call "
+                    "python3 /home/agents/workspace/scripts/altair_intake.py). "
+                    "Execute steps in parallel with your own delegate_task fan-out (you are role=orchestrator). "
+                    "Use deepseek-v4-pro for any analysis/deep-thinking. "
+                    "Report progress frequently — the user will see progress events as they happen. "
+                    "If you need clarification, ask ONE question at a time. "
+                    "Each child subagent gets its own isolated terminal session."
+                )
+
+                # Use delegate_task with background=True for full durability + async delivery.
+                # This is preferred over raw threading: the async_delegation module
+                # (1) persists the dispatch to state.db for crash recovery,
+                # (2) registers a progress_fn for stale-detection,
+                # (3) publishes completion to process_registry.completion_queue
+                #     which the TUI drains as a fresh message turn.
+                _snappy_delegation_ok = True
+                try:
+                    from tools.delegate_tool import delegate_task as _delegate_task
+                    _result = _delegate_task(
+                        goal=user_message,
+                        context=_planner_context,
+                        role="orchestrator",
+                        background=True,
+                        max_iterations=120,
+                        parent_agent=self,
+                        tasks=_planner_goals,
+                    )
+                    # delegate_task returns a JSON string (status: dispatched, delegation_id)
+                    if _result:
+                        _r = json.loads(_result) if isinstance(_result, str) else _result
+                        if _r.get("status") == "rejected":
+                            logger.warning(
+                                "[snappy_ack] Async delegation rejected (capacity). "
+                                "Falling back to synchronous run: %s",
+                                _r.get("error", "unknown"),
+                            )
+                            _snappy_delegation_ok = False
+                except Exception as _de:
+                    logger.warning("[snappy_ack] delegate_task failed, falling back to sync: %s", _de)
+                    _snappy_delegation_ok = False
+
+                if not _snappy_delegation_ok:
+                    # Fallback: synchronous delegate_task in a daemon thread.
+                    # Still non-blocking to the TUI response (we return "Ready." first).
+                    import threading as _threading
+                    from tools.delegate_tool import delegate_task as _dt_sync
+
+                    def _fallback_sync(goal_text):
+                        try:
+                            _dt_sync(
+                                goal=goal_text,
+                                context=_planner_context,
+                                role="orchestrator",
+                                parent_agent=self,
+                                max_iterations=120,
+                            )
+                        except Exception as _e2:
+                            logger.error("[snappy_ack] fallback subagent error: %s", _e2)
+
+                    _threading.Thread(
+                        target=_fallback_sync, args=(user_message,), daemon=True
+                    ).start()
+
+                # Persist the dispatch intent to the daily note + SBOS for traceability.
+                # Best-effort: never block the "Ready." reply on this.
+                def _record_intake():
+                    try:
+                        import subprocess
+                        from hermes_constants import get_hermes_home
+                        _home = str(get_hermes_home())
+                        # Record into the daily note via altair_intake.py helper
+                        subprocess.run(
+                            [
+                                "python3", "/home/agents/workspace/scripts/altair_intake.py",
+                                "all",
+                                "--title", f"Snappy planner task #{_task_id}",
+                                "--note", f"Launched background planner for: {user_message[:200]}",
+                                "--priority", "high",
+                                "--initiative", "15",
+                                "--worker", "altair",
+                            ],
+                            timeout=5,
+                            capture_output=True,
+                        )
+                    except Exception as _e3:
+                        logger.debug("[snappy_ack] SBOS intake record failed (non-critical): %s", _e3)
+
+                import threading as _threading
+                _threading.Thread(target=_record_intake, daemon=True).start()
+
                 return {
                     "final_response": "Ready.",
                     "completed": True,
                     "api_calls": 0,
                     "messages": [],
+                    "task_id": _task_id,
+                    "background_launched": True,
+                    "delegation_mode": "async" if _snappy_delegation_ok else "sync-fallback",
                 }
         except Exception:
             pass  # Fall through to normal path
