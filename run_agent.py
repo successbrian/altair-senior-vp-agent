@@ -7595,7 +7595,7 @@ class AIAgent:
                 _cfg = load_config() or {}
                 _agent_cfg = _cfg.get("agent", {}) if isinstance(_cfg, dict) else {}
                 _snappy_ack = bool((_agent_cfg or {}).get("snappy_ack", False))
-            if _snappy_ack and user_message and isinstance(user_message, str) and user_message.strip():
+            if _snappy_ack and user_message and isinstance(user_message, str) and user_message.strip() and not persist_user_display_kind:
                 import uuid as _uuid
 
                 _task_id = str(_uuid.uuid4())
