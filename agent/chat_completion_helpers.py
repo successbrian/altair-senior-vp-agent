@@ -565,7 +565,26 @@ def direct_api_call(agent, api_kwargs: dict):
     request runs in-flight normally, the per-request OpenAI client's own httpx
     timeout (provider ``request_timeout_seconds`` / ``HERMES_API_TIMEOUT``) bounds
     a genuinely hung provider — the same bound interactive calls already rely on.
+
+    The SDK timeout is additionally capped below the cron inactivity watchdog
+    (``HERMES_CRON_TIMEOUT``, default 600s): a slow/hung provider must raise a
+    retryable timeout error, not outlive the watchdog and get the whole cron
+    job killed as "idle". Without this cap the default 1800s SDK timeout
+    outlives the 600s watchdog, which is exactly how delegate_task subagents
+    in cron turns died with "idle for 604s" while legitimately waiting on
+    the provider.
     """
+    # Bound the request below the cron inactivity watchdog so a hung provider
+    # raises a retryable timeout instead of the job dying as "idle".
+    # (Copy: api_kwargs is the caller's dict and build_kwargs may reuse it.)
+    api_kwargs = dict(api_kwargs)
+    _cron_limit = _env_float("HERMES_CRON_TIMEOUT", 600.0)
+    _cap = _cron_limit - 60.0
+    if _cap > 0:
+        _existing = api_kwargs.get("timeout")
+        api_kwargs["timeout"] = min(
+            _existing if isinstance(_existing, (int, float)) else _cap, _cap
+        )
     _check_stale_giveup(agent)
     agent._touch_activity("waiting for non-streaming API response")
     request_client_holder = {"client": None}
