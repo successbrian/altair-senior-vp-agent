@@ -205,9 +205,7 @@ const TranscriptPane = memo(function TranscriptPane({
                 </Box>
               )}
 
-              {row.msg.kind === 'intro' ? (
-                null
-              ) : row.msg.kind === 'panel' && row.msg.panelData ? (
+              {row.msg.kind === 'intro' ? null : row.msg.kind === 'panel' && row.msg.panelData ? (
                 <Panel sections={row.msg.panelData.sections} t={ui.theme} title={row.msg.panelData.title} />
               ) : (
                 <MessageLine

@@ -53,7 +53,9 @@ export const HealthStrip = memo(function HealthStrip() {
 
     const tick = () => {
       loadHealth().then(h => {
-        if (alive) {setHealth(h)}
+        if (alive) {
+          setHealth(h)
+        }
       })
     }
 
@@ -81,11 +83,7 @@ export const HealthStrip = memo(function HealthStrip() {
   const tasks = health.tasks_by_status ?? {}
 
   const open =
-    (tasks.backlog ?? 0) +
-    (tasks.in_progress ?? 0) +
-    (tasks.active ?? 0) +
-    (tasks.blocked ?? 0) +
-    (tasks.at_risk ?? 0)
+    (tasks.backlog ?? 0) + (tasks.in_progress ?? 0) + (tasks.active ?? 0) + (tasks.blocked ?? 0) + (tasks.at_risk ?? 0)
 
   const done = tasks.completed ?? 0
   const models = health.models ?? {}
@@ -97,7 +95,9 @@ export const HealthStrip = memo(function HealthStrip() {
   return (
     <Box flexShrink={0} paddingLeft={1} paddingRight={1}>
       <Text wrap="truncate-end">
-        <Text bold color={c.accent}>⚡ </Text>
+        <Text bold color={c.accent}>
+          ⚡{' '}
+        </Text>
         <Text color={down > 0 ? c.error : c.statusFg}>
           {active}/{agents.length} agents
         </Text>

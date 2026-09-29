@@ -92,7 +92,7 @@ function OverviewScreen({ ctx, onClose, onPatch, s, t }: ScreenProps) {
   const note = !s.is_admin
     ? 'Billing actions need someone with billing permissions (owner, admin, or finance admin).'
     : !s.cli_billing_enabled
-      ? "Remote spending is off for this org — a billing admin can turn it on from the billing portal."
+      ? 'Remote spending is off for this org — a billing admin can turn it on from the billing portal.'
       : null
 
   // Always show the full billing menu for an admin/billing-on org — a missing
@@ -887,8 +887,8 @@ function AutoReloadScreen({ ctx, onClose, onPatch, s, t }: ScreenProps) {
       {fieldBox('Reload balance to:', reloadTo, setReloadTo, row === 1, 'reloadTo')}
       <Text />
       <Text color={t.color.muted}>
-        By confirming, you authorize your billing provider to charge {chargeCardName} whenever your balance falls below the
-        threshold. Turn off any time here or on the portal.
+        By confirming, you authorize your billing provider to charge {chargeCardName} whenever your balance falls below
+        the threshold. Turn off any time here or on the portal.
       </Text>
       {error && <Text color={t.color.error}>{error}</Text>}
       <Text />

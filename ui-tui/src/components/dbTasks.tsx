@@ -26,24 +26,29 @@ const STATUS_GLYPH: Record<string, string> = {
   blocked: '⊘',
   at_risk: '⚠',
   backlog: '○',
-  pending: '○',
+  pending: '○'
 }
 
 function loadTasks(): Promise<Tasks | null> {
   return new Promise(resolve => {
-    execFile(TASKS_PY, [TASKS_SCRIPT, 'list', '--limit', String(MAX_ROWS), '--json'], { timeout: 10000 }, (err, stdout) => {
-      if (err) {
-        resolve(null)
+    execFile(
+      TASKS_PY,
+      [TASKS_SCRIPT, 'list', '--limit', String(MAX_ROWS), '--json'],
+      { timeout: 10000 },
+      (err, stdout) => {
+        if (err) {
+          resolve(null)
 
-        return
-      }
+          return
+        }
 
-      try {
-        resolve(JSON.parse(stdout) as Tasks)
-      } catch {
-        resolve(null)
+        try {
+          resolve(JSON.parse(stdout) as Tasks)
+        } catch {
+          resolve(null)
+        }
       }
-    })
+    )
   })
 }
 
@@ -57,7 +62,9 @@ export const DbTasksPanel = memo(function DbTasksPanel() {
 
     const tick = () => {
       loadTasks().then(t => {
-        if (alive) {setTasks(t)}
+        if (alive) {
+          setTasks(t)
+        }
       })
     }
 
@@ -91,7 +98,9 @@ export const DbTasksPanel = memo(function DbTasksPanel() {
       <Box onClick={() => setCollapsed(v => !v)}>
         <Text wrap="truncate-end">
           <Text color={c.accent}>{collapsed ? '▸' : '▾'} </Text>
-          <Text bold color={c.text}>Tasks</Text>
+          <Text bold color={c.text}>
+            Tasks
+          </Text>
           <Text color={c.muted}> · </Text>
           <Text color={c.statusFg}>{open.length} open</Text>
           {doneCount > 0 ? (
